@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habit Tracker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23e91e63'/><path d='M30 50 L45 65 L70 35' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #faf8f5;
+            --bg-secondary: #f0ebe4;
+            --bg-card: #ffffff;
+            --text-primary: #2d3436;
+            --text-secondary: #636e72;
+            --text-muted: #b2bec3;
+            --accent-warm: #e17055;
+            --accent-success: #00b894;
+            --accent-fail: #d63031;
+            --border: #dfe6e9;
+            --shadow: rgba(45, 52, 54, 0.08);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Source Sans 3', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+            background-image: 
+                radial-gradient(circle at 20% 80%, rgba(225, 112, 85, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(0, 184, 148, 0.05) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-family: 'Fraunces', serif;
+            font-size: 2.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+        }
+
+        .date-display {
+            font-family: 'Fraunces', serif;
+            font-size: 1.25rem;
+            color: var(--accent-warm);
+            margin-top: 1rem;
+            font-weight: 600;
+        }
+
+        /* Status indicator */
+        .status {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 100;
+        }
+
+        .status.saving {
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            opacity: 1;
+        }
+
+        .status.saved {
+            background: rgba(0, 184, 148, 0.1);
+            color: var(--accent-success);
+            opacity: 1;
+        }
+
+        .status.error {
+            background: rgba(214, 48, 49, 0.1);
+            color: var(--accent-fail);
+            opacity: 1;
+        }
+
+        /* Add Habit Form */
+        .add-habit-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .add-habit-form {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+
+        .add-habit-form input {
+            flex: 1;
+            padding: 0.875rem 1.25rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            font-size: 1rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+            background: var(--bg-primary);
+        }
+
+        .add-habit-form input:focus {
+            outline: none;
+            border-color: var(--accent-warm);
+            box-shadow: 0 0 0 4px rgba(225, 112, 85, 0.1);
+        }
+
+        .add-habit-form input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .btn {
+            padding: 0.875rem 1.75rem;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn-primary {
+            background: var(--accent-warm);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #d35844;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(225, 112, 85, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        /* Habits List */
+        .habits-section {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .habit-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px var(--shadow);
+            border: 1px solid var(--border);
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .habit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .habit-name {
+            font-family: 'Fraunces', serif;
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .habit-created {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .habit-delete {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 0.25rem;
+            font-size: 1.25rem;
+            transition: color 0.2s ease;
+            line-height: 1;
+        }
+
+        .habit-delete:hover {
+            color: var(--accent-fail);
+        }
+
+        /* Stats */
+        .habit-stats {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 1.25rem;
+            padding-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .stat {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-value {
+            font-family: 'Fraunces', serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-warm);
+        }
+
+        .stat-value.success {
+            color: var(--accent-success);
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Week View */
+        .week-view {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: space-between;
+        }
+
+        .day {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            flex: 1;
+        }
+
+        .day-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .day-date {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .day-btn {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            border: 2px solid var(--border);
+            background: var(--bg-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.2s ease;
+        }
+
+        .day-btn:hover {
+            border-color: var(--text-muted);
+            transform: scale(1.05);
+        }
+
+        .day-btn.completed {
+            background: var(--accent-success);
+            border-color: var(--accent-success);
+            color: white;
+            animation: pop 0.3s ease;
+        }
+
+        .day-btn.missed {
+            background: var(--accent-fail);
+            border-color: var(--accent-fail);
+            color: white;
+            animation: pop 0.3s ease;
+        }
+
+        .day-btn.today {
+            border-color: var(--accent-warm);
+            box-shadow: 0 0 0 3px rgba(225, 112, 85, 0.15);
+        }
+
+        .day-btn.future {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .empty-state h2 {
+            font-family: 'Fraunces', serif;
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent-warm);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            border: 2px solid var(--border);
+            border-radius: 12px;
+            background: var(--bg-card);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            color: var(--text-secondary);
+        }
+
+        .tab:hover {
+            border-color: var(--text-muted);
+        }
+
+        .tab.active {
+            background: var(--accent-warm);
+            border-color: var(--accent-warm);
+            color: white;
+        }
+
+        .tab .count {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.1);
+            padding: 0.1rem 0.5rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-left: 0.5rem;
+        }
+
+        .tab.active .count {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Deleted habit card styling */
+        .habit-card.deleted {
+            opacity: 0.7;
+            background: var(--bg-secondary);
+        }
+
+        .habit-card.deleted .day-btn {
+            cursor: not-allowed;
+        }
+
+        .restore-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--accent-success);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--accent-success);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .restore-btn:hover {
+            background: var(--accent-success);
+            color: white;
+        }
+
+        .delete-permanent-btn {
+            padding: 0.5rem 1rem;
+            border: 2px solid var(--accent-fail);
+            border-radius: 8px;
+            background: transparent;
+            color: var(--accent-fail);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+            margin-left: 0.5rem;
+        }
+
+        .delete-permanent-btn:hover {
+            background: var(--accent-fail);
+            color: white;
+        }
+
+        .deleted-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            body {
+                padding: 1rem;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .add-habit-form {
+                flex-direction: column;
+            }
+
+            .add-habit-form input,
+            .btn {
+                width: 100%;
+            }
+
+            .habit-stats {
+                gap: 1rem;
+            }
+
+            .day-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1.25rem;
+            }
+
+            .week-view {
+                gap: 0.25rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status" id="status"></div>
+    
+    <div class="container">
+        <header>
+            <h1>Habit Tracker</h1>
+            <p class="subtitle">Small steps, every day</p>
+            <p class="date-display" id="currentDate"></p>
+        </header>
+
+        <section class="add-habit-section">
+            <form class="add-habit-form" id="addHabitForm">
+                <input type="text" id="habitInput" placeholder="Enter a new habit to track..." autocomplete="off">
+                <button type="submit" class="btn btn-primary">Add Habit</button>
+            </form>
+        </section>
+
+        <div class="tabs" id="tabs">
+            <button class="tab active" data-tab="active" onclick="switchTab('active')">
+                Active Habits <span class="count" id="activeCount">0</span>
+            </button>
+            <button class="tab" data-tab="deleted" onclick="switchTab('deleted')">
+                Deleted Habits <span class="count" id="deletedCount">0</span>
+            </button>
+        </div>
+
+        <section class="habits-section" id="habitsList">
+            <div class="loading">Loading habits</div>
+        </section>
+    </div>
+
+    <script>
+        // API base URL
+        const API_URL = '/api/habits';
+
+        // In-memory cache of habits
+        let habitsCache = [];
+
+        // Current tab
+        let currentTab = 'active';
+
+        // Status indicator
+        const statusEl = document.getElementById('status');
+        let statusTimeout;
+
+        function showStatus(message, type = 'saved') {
+            clearTimeout(statusTimeout);
+            statusEl.textContent = message;
+            statusEl.className = `status ${type}`;
+
+            if (type !== 'error') {
+                statusTimeout = setTimeout(() => {
+                    statusEl.className = 'status';
+                }, 2000);
+            }
+        }
+
+        // Get today's date as YYYY-MM-DD
+        function getDateString(date = new Date()) {
+            return date.toISOString().split('T')[0];
+        }
+
+        // Get day name
+        function getDayName(date) {
+            return date.toLocaleDateString('en-GB', { weekday: 'short' });
+        }
+
+        // Get day number
+        function getDayNumber(date) {
+            return date.getDate();
+        }
+
+        // Format display date
+        function formatDisplayDate(date) {
+            return date.toLocaleDateString('en-GB', {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            });
+        }
+
+        // Format created date
+        function formatCreatedDate(isoString) {
+            if (!isoString) return '';
+            const date = new Date(isoString);
+            return date.toLocaleDateString('en-GB', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric'
+            });
+        }
+
+        // Get last 7 days (including today)
+        function getLast7Days() {
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const date = new Date();
+                date.setDate(date.getDate() - i);
+                days.push({
+                    date: getDateString(date),
+                    dayName: getDayName(date),
+                    dayNumber: getDayNumber(date),
+                    isToday: i === 0,
+                    isFuture: false
+                });
+            }
+            return days;
+        }
+
+        // Load habits from server
+        async function loadHabits() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('Failed to load');
+                habitsCache = await response.json();
+                return habitsCache;
+            } catch (error) {
+                console.error('Error loading habits:', error);
+                showStatus('Failed to load habits', 'error');
+                return [];
+            }
+        }
+
+        // Save habits to server
+        async function saveHabits(habits) {
+            showStatus('Saving...', 'saving');
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(habits)
+                });
+                if (!response.ok) throw new Error('Failed to save');
+                habitsCache = habits;
+                showStatus('Saved ✓', 'saved');
+            } catch (error) {
+                console.error('Error saving habits:', error);
+                showStatus('Failed to save', 'error');
+            }
+        }
+
+        // Calculate streak
+        function calculateStreak(completions) {
+            let streak = 0;
+            const today = new Date();
+
+            let checkDate = new Date(today);
+
+            if (completions[getDateString(today)] === 'completed') {
+                streak = 1;
+                checkDate.setDate(checkDate.getDate() - 1);
+            } else {
+                checkDate.setDate(checkDate.getDate() - 1);
+            }
+
+            while (true) {
+                const dateStr = getDateString(checkDate);
+                if (completions[dateStr] === 'completed') {
+                    streak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+
+            return streak;
+        }
+
+        // Calculate past week stats (X / 7)
+        function calculateWeeklyStats(completions) {
+            const days = getLast7Days();
+            let completed = 0;
+
+            days.forEach(day => {
+                if (completions[day.date] === 'completed') {
+                    completed++;
+                }
+            });
+
+            return { completed, total: 7 };
+        }
+
+        // Calculate all time stats (X / Y)
+        function calculateAllTimeStats(completions, createdAt) {
+            if (!createdAt) {
+                // Fallback: count all completion entries
+                const dates = Object.keys(completions || {});
+                if (dates.length === 0) return { completed: 0, total: 0 };
+
+                dates.sort();
+                const firstDate = new Date(dates[0]);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                let totalDays = 0;
+                let completedDays = 0;
+                let checkDate = new Date(firstDate);
+
+                while (checkDate <= today) {
+                    totalDays++;
+                    if (completions[getDateString(checkDate)] === 'completed') {
+                        completedDays++;
+                    }
+                    checkDate.setDate(checkDate.getDate() + 1);
+                }
+
+                return { completed: completedDays, total: totalDays };
+            }
+
+            const createdDate = new Date(createdAt);
+            createdDate.setHours(0, 0, 0, 0);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            let totalDays = 0;
+            let completedDays = 0;
+            let checkDate = new Date(createdDate);
+
+            while (checkDate <= today) {
+                totalDays++;
+                if ((completions || {})[getDateString(checkDate)] === 'completed') {
+                    completedDays++;
+                }
+                checkDate.setDate(checkDate.getDate() + 1);
+            }
+
+            return { completed: completedDays, total: totalDays };
+        }
+
+        // Get active habits
+        function getActiveHabits() {
+            return habitsCache.filter(h => !h.deleted);
+        }
+
+        // Get deleted habits
+        function getDeletedHabits() {
+            return habitsCache.filter(h => h.deleted);
+        }
+
+        // Switch tabs
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.tab === tab);
+            });
+            renderHabits();
+        }
+
+        // Update tab counts
+        function updateTabCounts() {
+            document.getElementById('activeCount').textContent = getActiveHabits().length;
+            document.getElementById('deletedCount').textContent = getDeletedHabits().length;
+        }
+
+        // Render habits
+        function renderHabits() {
+            const habitsList = document.getElementById('habitsList');
+            const days = getLast7Days();
+
+            updateTabCounts();
+
+            const habits = currentTab === 'active' ? getActiveHabits() : getDeletedHabits();
+
+            if (habits.length === 0) {
+                if (currentTab === 'active') {
+                    habitsList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🌱</div>
+                            <h2>No habits yet</h2>
+                            <p>Add your first habit to start tracking your progress</p>
+                        </div>
+                    `;
+                } else {
+                    habitsList.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-state-icon">🗑️</div>
+                            <h2>No deleted habits</h2>
+                            <p>Deleted habits will appear here for recovery</p>
+                        </div>
+                    `;
+                }
+                return;
+            }
+
+            habitsList.innerHTML = habits.map((habit) => {
+                const originalIndex = habitsCache.indexOf(habit);
+                const streak = calculateStreak(habit.completions || {});
+                const weeklyStats = calculateWeeklyStats(habit.completions || {});
+                const allTimeStats = calculateAllTimeStats(habit.completions || {}, habit.createdAt);
+                const isDeleted = habit.deleted;
+
+                return `
+                    <div class="habit-card ${isDeleted ? 'deleted' : ''}">
+                        <div class="habit-header">
+                            <div>
+                                <h2 class="habit-name">${escapeHtml(habit.name)}</h2>
+                                <div class="habit-created">Created ${formatCreatedDate(habit.createdAt)}</div>
+                            </div>
+                            ${!isDeleted ? `<button class="habit-delete" onclick="deleteHabit(${originalIndex})" title="Delete habit">×</button>` : ''}
+                        </div>
+                        <div class="habit-stats">
+                            <div class="stat">
+                                <span class="stat-value success">${streak}</span>
+                                <span class="stat-label">Current Streak</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value">${weeklyStats.completed} / 7</span>
+                                <span class="stat-label">Past Week</span>
+                            </div>
+                            <div class="stat">
+                                <span class="stat-value">${allTimeStats.completed} / ${allTimeStats.total}</span>
+                                <span class="stat-label">All Time</span>
+                            </div>
+                        </div>
+                        <div class="week-view">
+                            ${days.map(day => {
+                                const status = (habit.completions || {})[day.date];
+                                let btnClass = 'day-btn';
+                                let icon = '';
+
+                                if (day.isToday) btnClass += ' today';
+                                if (day.isFuture || isDeleted) btnClass += ' future';
+
+                                if (status === 'completed') {
+                                    btnClass += ' completed';
+                                    icon = '✓';
+                                } else if (status === 'missed') {
+                                    btnClass += ' missed';
+                                    icon = '✗';
+                                }
+
+                                return `
+                                    <div class="day">
+                                        <span class="day-label">${day.dayName}</span>
+                                        <span class="day-date">${day.dayNumber}</span>
+                                        <button
+                                            class="${btnClass}"
+                                            onclick="${(day.isFuture || isDeleted) ? '' : `toggleDay(${originalIndex}, '${day.date}')`}"
+                                            ${(day.isFuture || isDeleted) ? 'disabled' : ''}
+                                        >${icon}</button>
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
+                        ${isDeleted ? `
+                            <div class="deleted-actions">
+                                <button class="restore-btn" onclick="restoreHabit(${originalIndex})">Restore Habit</button>
+                                <button class="delete-permanent-btn" onclick="permanentDeleteHabit(${originalIndex})">Delete Permanently</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Add new habit
+        async function addHabit(name) {
+            const habits = [...habitsCache];
+            habits.push({
+                name: name.trim(),
+                completions: {},
+                createdAt: new Date().toISOString()
+            });
+            await saveHabits(habits);
+            renderHabits();
+        }
+
+        // Soft delete habit (move to deleted)
+        async function deleteHabit(index) {
+            if (confirm('Are you sure you want to delete this habit? It will be moved to Deleted Habits.')) {
+                const habits = [...habitsCache];
+                habits[index].deleted = true;
+                habits[index].deletedAt = new Date().toISOString();
+                await saveHabits(habits);
+                renderHabits();
+            }
+        }
+
+        // Restore habit
+        async function restoreHabit(index) {
+            const habits = [...habitsCache];
+            delete habits[index].deleted;
+            delete habits[index].deletedAt;
+            await saveHabits(habits);
+            renderHabits();
+        }
+
+        // Permanently delete habit
+        async function permanentDeleteHabit(index) {
+            if (confirm('Are you sure you want to permanently delete this habit? This cannot be undone.')) {
+                const habits = [...habitsCache];
+                habits.splice(index, 1);
+                await saveHabits(habits);
+                renderHabits();
+            }
+        }
+
+        // Toggle day status: empty -> completed -> missed -> empty
+        async function toggleDay(habitIndex, dateStr) {
+            const habits = [...habitsCache];
+            if (!habits[habitIndex].completions) {
+                habits[habitIndex].completions = {};
+            }
+
+            const current = habits[habitIndex].completions[dateStr];
+
+            if (!current) {
+                habits[habitIndex].completions[dateStr] = 'completed';
+            } else if (current === 'completed') {
+                habits[habitIndex].completions[dateStr] = 'missed';
+            } else {
+                delete habits[habitIndex].completions[dateStr];
+            }
+
+            // Update UI immediately for responsiveness
+            habitsCache = habits;
+            renderHabits();
+
+            // Save in background
+            await saveHabits(habits);
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Set current date
+            document.getElementById('currentDate').textContent = formatDisplayDate(new Date());
+
+            // Load and render habits
+            await loadHabits();
+            renderHabits();
+
+            // Form submission
+            document.getElementById('addHabitForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const input = document.getElementById('habitInput');
+                const name = input.value.trim();
+
+                if (name) {
+                    await addHabit(name);
+                    input.value = '';
+                }
+            });
+        });
+    </script>
+</body>
+</html>
