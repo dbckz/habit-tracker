@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habit Tracker</title>
+    <title>Dave's Habit Tracker</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%23e91e63'/><path d='M30 50 L45 65 L70 35' stroke='white' stroke-width='10' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -70,6 +70,50 @@
             color: var(--accent-warm);
             margin-top: 1rem;
             font-weight: 600;
+        }
+
+        /* Overall metrics */
+        .overall-metrics {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px var(--shadow);
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+        }
+
+        .overall-stat {
+            text-align: center;
+        }
+
+        .overall-stat-value {
+            font-family: 'Fraunces', serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-warm);
+        }
+
+        .overall-stat-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.25rem;
+        }
+
+        .overall-stat-percent {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .stat-percent {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.1rem;
         }
 
         /* Status indicator */
@@ -519,10 +563,22 @@
     
     <div class="container">
         <header>
-            <h1>Habit Tracker</h1>
+            <h1>Dave's Habit Tracker</h1>
             <p class="subtitle">Small steps, every day</p>
             <p class="date-display" id="currentDate"></p>
         </header>
+
+        <section class="overall-metrics" id="overallMetrics">
+            <div class="overall-stat">
+                <div class="overall-stat-value" id="overallWeekly">0 / 0</div>
+                <div class="overall-stat-label">Past Week</div>
+            </div>
+            <div class="overall-stat">
+                <div class="overall-stat-value" id="overallAllTime">0 / 0</div>
+                <div class="overall-stat-label">All Time</div>
+                <div class="overall-stat-percent" id="overallAllTimePercent">0%</div>
+            </div>
+        </section>
 
         <section class="add-habit-section">
             <form class="add-habit-form" id="addHabitForm">
@@ -599,8 +655,7 @@
         // Format created date
         function formatCreatedDate(isoString) {
             if (!isoString) return '';
-            const date = new Date(isoString);
-            return date.toLocaleDateString('en-GB', {
+            return new Date(isoString).toLocaleDateString('en-GB', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric'
@@ -660,24 +715,18 @@
         function calculateStreak(completions) {
             let streak = 0;
             const today = new Date();
-
             let checkDate = new Date(today);
 
+            // Check if today is completed to start the streak
             if (completions[getDateString(today)] === 'completed') {
                 streak = 1;
-                checkDate.setDate(checkDate.getDate() - 1);
-            } else {
-                checkDate.setDate(checkDate.getDate() - 1);
             }
+            checkDate.setDate(checkDate.getDate() - 1);
 
-            while (true) {
-                const dateStr = getDateString(checkDate);
-                if (completions[dateStr] === 'completed') {
-                    streak++;
-                    checkDate.setDate(checkDate.getDate() - 1);
-                } else {
-                    break;
-                }
+            // Count consecutive completed days going backwards
+            while (completions[getDateString(checkDate)] === 'completed') {
+                streak++;
+                checkDate.setDate(checkDate.getDate() - 1);
             }
 
             return streak;
@@ -686,56 +735,36 @@
         // Calculate past week stats (X / 7)
         function calculateWeeklyStats(completions) {
             const days = getLast7Days();
-            let completed = 0;
-
-            days.forEach(day => {
-                if (completions[day.date] === 'completed') {
-                    completed++;
-                }
-            });
-
+            const completed = days.filter(day => completions[day.date] === 'completed').length;
             return { completed, total: 7 };
         }
 
         // Calculate all time stats (X / Y)
         function calculateAllTimeStats(completions, createdAt) {
-            if (!createdAt) {
-                // Fallback: count all completion entries
-                const dates = Object.keys(completions || {});
+            const safeCompletions = completions || {};
+
+            // Determine start date: use createdAt or fallback to first completion date
+            let startDate;
+            if (createdAt) {
+                startDate = new Date(createdAt);
+            } else {
+                const dates = Object.keys(safeCompletions);
                 if (dates.length === 0) return { completed: 0, total: 0 };
-
                 dates.sort();
-                const firstDate = new Date(dates[0]);
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                let totalDays = 0;
-                let completedDays = 0;
-                let checkDate = new Date(firstDate);
-
-                while (checkDate <= today) {
-                    totalDays++;
-                    if (completions[getDateString(checkDate)] === 'completed') {
-                        completedDays++;
-                    }
-                    checkDate.setDate(checkDate.getDate() + 1);
-                }
-
-                return { completed: completedDays, total: totalDays };
+                startDate = new Date(dates[0]);
             }
+            startDate.setHours(0, 0, 0, 0);
 
-            const createdDate = new Date(createdAt);
-            createdDate.setHours(0, 0, 0, 0);
             const today = new Date();
             today.setHours(0, 0, 0, 0);
 
             let totalDays = 0;
             let completedDays = 0;
-            let checkDate = new Date(createdDate);
+            let checkDate = new Date(startDate);
 
             while (checkDate <= today) {
                 totalDays++;
-                if ((completions || {})[getDateString(checkDate)] === 'completed') {
+                if (safeCompletions[getDateString(checkDate)] === 'completed') {
                     completedDays++;
                 }
                 checkDate.setDate(checkDate.getDate() + 1);
@@ -769,33 +798,67 @@
             document.getElementById('deletedCount').textContent = getDeletedHabits().length;
         }
 
+        // Calculate and update overall metrics
+        function updateOverallMetrics() {
+            const activeHabits = getActiveHabits();
+
+            let totalWeeklyCompleted = 0;
+            let totalWeeklyPossible = 0;
+            let totalAllTimeCompleted = 0;
+            let totalAllTimePossible = 0;
+
+            activeHabits.forEach(habit => {
+                const weeklyStats = calculateWeeklyStats(habit.completions || {});
+                const allTimeStats = calculateAllTimeStats(habit.completions || {}, habit.createdAt);
+
+                totalWeeklyCompleted += weeklyStats.completed;
+                totalWeeklyPossible += weeklyStats.total;
+                totalAllTimeCompleted += allTimeStats.completed;
+                totalAllTimePossible += allTimeStats.total;
+            });
+
+            document.getElementById('overallWeekly').textContent = `${totalWeeklyCompleted} / ${totalWeeklyPossible}`;
+            document.getElementById('overallAllTime').textContent = `${totalAllTimeCompleted} / ${totalAllTimePossible}`;
+
+            const allTimePercent = totalAllTimePossible > 0
+                ? Math.round((totalAllTimeCompleted / totalAllTimePossible) * 100)
+                : 0;
+            document.getElementById('overallAllTimePercent').textContent = `${allTimePercent}%`;
+        }
+
+        // Render empty state for a tab
+        function renderEmptyState(isActiveTab) {
+            if (isActiveTab) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🌱</div>
+                        <h2>No habits yet</h2>
+                        <p>Add your first habit to start tracking your progress</p>
+                    </div>
+                `;
+            }
+            return `
+                <div class="empty-state">
+                    <div class="empty-state-icon">🗑️</div>
+                    <h2>No deleted habits</h2>
+                    <p>Deleted habits will appear here for recovery</p>
+                </div>
+            `;
+        }
+
         // Render habits
         function renderHabits() {
             const habitsList = document.getElementById('habitsList');
             const days = getLast7Days();
 
             updateTabCounts();
+            updateOverallMetrics();
 
-            const habits = currentTab === 'active' ? getActiveHabits() : getDeletedHabits();
+            const isActiveTab = currentTab === 'active';
+            const habits = isActiveTab ? getActiveHabits() : getDeletedHabits();
 
             if (habits.length === 0) {
-                if (currentTab === 'active') {
-                    habitsList.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">🌱</div>
-                            <h2>No habits yet</h2>
-                            <p>Add your first habit to start tracking your progress</p>
-                        </div>
-                    `;
-                } else {
-                    habitsList.innerHTML = `
-                        <div class="empty-state">
-                            <div class="empty-state-icon">🗑️</div>
-                            <h2>No deleted habits</h2>
-                            <p>Deleted habits will appear here for recovery</p>
-                        </div>
-                    `;
-                }
+                habitsList.innerHTML = renderEmptyState(isActiveTab);
                 return;
             }
 
@@ -804,6 +867,9 @@
                 const streak = calculateStreak(habit.completions || {});
                 const weeklyStats = calculateWeeklyStats(habit.completions || {});
                 const allTimeStats = calculateAllTimeStats(habit.completions || {}, habit.createdAt);
+                const allTimePercent = allTimeStats.total > 0
+                    ? Math.round((allTimeStats.completed / allTimeStats.total) * 100)
+                    : 0;
                 const isDeleted = habit.deleted;
 
                 return `
@@ -826,34 +892,31 @@
                             </div>
                             <div class="stat">
                                 <span class="stat-value">${allTimeStats.completed} / ${allTimeStats.total}</span>
+                                <div class="stat-percent">${allTimePercent}%</div>
                                 <span class="stat-label">All Time</span>
                             </div>
                         </div>
                         <div class="week-view">
                             ${days.map(day => {
                                 const status = (habit.completions || {})[day.date];
-                                let btnClass = 'day-btn';
-                                let icon = '';
-
-                                if (day.isToday) btnClass += ' today';
-                                if (day.isFuture || isDeleted) btnClass += ' future';
-
-                                if (status === 'completed') {
-                                    btnClass += ' completed';
-                                    icon = '✓';
-                                } else if (status === 'missed') {
-                                    btnClass += ' missed';
-                                    icon = '✗';
-                                }
+                                const isDisabled = day.isFuture || isDeleted;
+                                const classes = [
+                                    'day-btn',
+                                    day.isToday && 'today',
+                                    isDisabled && 'future',
+                                    status === 'completed' && 'completed',
+                                    status === 'missed' && 'missed'
+                                ].filter(Boolean).join(' ');
+                                const icon = status === 'completed' ? '✓' : status === 'missed' ? '✗' : '';
 
                                 return `
                                     <div class="day">
                                         <span class="day-label">${day.dayName}</span>
                                         <span class="day-date">${day.dayNumber}</span>
                                         <button
-                                            class="${btnClass}"
-                                            onclick="${(day.isFuture || isDeleted) ? '' : `toggleDay(${originalIndex}, '${day.date}')`}"
-                                            ${(day.isFuture || isDeleted) ? 'disabled' : ''}
+                                            class="${classes}"
+                                            onclick="${isDisabled ? '' : `toggleDay(${originalIndex}, '${day.date}')`}"
+                                            ${isDisabled ? 'disabled' : ''}
                                         >${icon}</button>
                                     </div>
                                 `;
@@ -922,18 +985,18 @@
         // Toggle day status: empty -> completed -> missed -> empty
         async function toggleDay(habitIndex, dateStr) {
             const habits = [...habitsCache];
-            if (!habits[habitIndex].completions) {
-                habits[habitIndex].completions = {};
+            const habit = habits[habitIndex];
+            if (!habit.completions) {
+                habit.completions = {};
             }
 
-            const current = habits[habitIndex].completions[dateStr];
-
+            const current = habit.completions[dateStr];
             if (!current) {
-                habits[habitIndex].completions[dateStr] = 'completed';
+                habit.completions[dateStr] = 'completed';
             } else if (current === 'completed') {
-                habits[habitIndex].completions[dateStr] = 'missed';
+                habit.completions[dateStr] = 'missed';
             } else {
-                delete habits[habitIndex].completions[dateStr];
+                delete habit.completions[dateStr];
             }
 
             // Update UI immediately for responsiveness
