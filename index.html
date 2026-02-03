@@ -375,6 +375,83 @@
             cursor: not-allowed;
         }
 
+        .day-note {
+            width: 48px;
+            padding: 0.25rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 0.7rem;
+            text-align: center;
+            background: var(--bg-primary);
+            font-family: inherit;
+            color: var(--text-primary);
+            margin-top: 0.25rem;
+            transition: all 0.2s ease;
+        }
+
+        .day-note:focus {
+            outline: none;
+            border-color: var(--accent-warm);
+            box-shadow: 0 0 0 2px rgba(225, 112, 85, 0.1);
+        }
+
+        .day-note::placeholder {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+        }
+
+        .day-note:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Week Navigation */
+        .week-nav {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .week-nav-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: var(--bg-card);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .week-nav-btn:hover:not(:disabled) {
+            border-color: var(--accent-warm);
+            color: var(--accent-warm);
+        }
+
+        .week-nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .week-label {
+            font-family: 'Fraunces', serif;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            min-width: 200px;
+            text-align: center;
+        }
+
+        .week-label-current {
+            color: var(--accent-warm);
+            font-weight: 600;
+        }
+
         @keyframes pop {
             0% { transform: scale(1); }
             50% { transform: scale(1.15); }
@@ -428,16 +505,17 @@
         /* Tabs */
         .tabs {
             display: flex;
+            flex-wrap: wrap;
             gap: 0.5rem;
             margin-bottom: 1.5rem;
         }
 
         .tab {
-            padding: 0.75rem 1.5rem;
+            padding: 0.5rem 1rem;
             border: 2px solid var(--border);
             border-radius: 12px;
             background: var(--bg-card);
-            font-size: 1rem;
+            font-size: 0.9rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -466,6 +544,18 @@
 
         .tab.active .count {
             background: rgba(255, 255, 255, 0.2);
+        }
+
+        .tab-deleted {
+            opacity: 0.5;
+        }
+
+        .tab-deleted:hover {
+            opacity: 0.8;
+        }
+
+        .tab-deleted.active {
+            opacity: 1;
         }
 
         /* Deleted habit card styling */
@@ -552,8 +642,19 @@
                 font-size: 1.25rem;
             }
 
+            .day-note {
+                width: 40px;
+                font-size: 0.6rem;
+                padding: 0.2rem;
+            }
+
             .week-view {
                 gap: 0.25rem;
+            }
+
+            .week-label {
+                font-size: 0.95rem;
+                min-width: 150px;
             }
         }
     </style>
@@ -587,12 +688,24 @@
             </form>
         </section>
 
+        <div class="week-nav">
+            <button class="week-nav-btn" onclick="changeWeek(-1)" title="Previous week">←</button>
+            <span class="week-label" id="weekLabel">This week</span>
+            <button class="week-nav-btn" id="nextWeekBtn" onclick="changeWeek(1)" title="Next week" disabled>→</button>
+        </div>
+
         <div class="tabs" id="tabs">
-            <button class="tab active" data-tab="active" onclick="switchTab('active')">
-                Active Habits <span class="count" id="activeCount">0</span>
+            <button class="tab" data-tab="notstarted" onclick="switchTab('notstarted')">
+                Not Started <span class="count" id="notstartedCount">0</span>
             </button>
-            <button class="tab" data-tab="deleted" onclick="switchTab('deleted')">
-                Deleted Habits <span class="count" id="deletedCount">0</span>
+            <button class="tab active" data-tab="active" onclick="switchTab('active')">
+                Active <span class="count" id="activeCount">0</span>
+            </button>
+            <button class="tab" data-tab="established" onclick="switchTab('established')">
+                Established <span class="count" id="establishedCount">0</span>
+            </button>
+            <button class="tab tab-deleted" data-tab="deleted" onclick="switchTab('deleted')">
+                Deleted <span class="count" id="deletedCount">0</span>
             </button>
         </div>
 
@@ -610,6 +723,9 @@
 
         // Current tab
         let currentTab = 'active';
+
+        // Week offset (0 = current week, -1 = last week, etc.)
+        let weekOffset = 0;
 
         // Status indicator
         const statusEl = document.getElementById('status');
@@ -662,21 +778,87 @@
             });
         }
 
-        // Get last 7 days (including today)
-        function getLast7Days() {
+        // Get completion status (handles both old string format and new object format)
+        function getCompletionStatus(completions, date) {
+            const entry = (completions || {})[date];
+            if (!entry) return null;
+            if (typeof entry === 'string') return entry;
+            return entry.status || null;
+        }
+
+        // Get completion note (handles both formats)
+        function getCompletionNote(completions, date) {
+            const entry = (completions || {})[date];
+            if (!entry || typeof entry === 'string') return '';
+            return entry.note || '';
+        }
+
+        // Set completion (preserves note if exists)
+        function setCompletion(completions, date, status, note) {
+            if (!status && !note) {
+                delete completions[date];
+            } else if (note) {
+                completions[date] = { status: status || null, note };
+            } else {
+                completions[date] = status;
+            }
+        }
+
+        // Get 7 days for a given week offset (0 = current week ending today)
+        function getLast7Days(offset = 0) {
             const days = [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
             for (let i = 6; i >= 0; i--) {
                 const date = new Date();
-                date.setDate(date.getDate() - i);
+                date.setDate(date.getDate() - i + (offset * 7));
+                date.setHours(0, 0, 0, 0);
+
+                const dateStr = getDateString(date);
+                const todayStr = getDateString(today);
+
                 days.push({
-                    date: getDateString(date),
+                    date: dateStr,
                     dayName: getDayName(date),
                     dayNumber: getDayNumber(date),
-                    isToday: i === 0,
-                    isFuture: false
+                    isToday: dateStr === todayStr,
+                    isFuture: date > today
                 });
             }
             return days;
+        }
+
+        // Get week label for display
+        function getWeekLabel(offset) {
+            if (offset === 0) return 'This week';
+            if (offset === -1) return 'Last week';
+
+            const days = getLast7Days(offset);
+            const startDate = new Date(days[0].date);
+            const endDate = new Date(days[6].date);
+
+            const formatOpts = { day: 'numeric', month: 'short' };
+            return `${startDate.toLocaleDateString('en-GB', formatOpts)} – ${endDate.toLocaleDateString('en-GB', formatOpts)}`;
+        }
+
+        // Change week
+        function changeWeek(delta) {
+            weekOffset += delta;
+            if (weekOffset > 0) weekOffset = 0; // Can't go to future weeks
+
+            updateWeekNav();
+            renderHabits();
+        }
+
+        // Update week navigation UI
+        function updateWeekNav() {
+            const label = document.getElementById('weekLabel');
+            const nextBtn = document.getElementById('nextWeekBtn');
+
+            label.textContent = getWeekLabel(weekOffset);
+            label.classList.toggle('week-label-current', weekOffset === 0);
+            nextBtn.disabled = weekOffset >= 0;
         }
 
         // Load habits from server
@@ -718,13 +900,13 @@
             let checkDate = new Date(today);
 
             // Check if today is completed to start the streak
-            if (completions[getDateString(today)] === 'completed') {
+            if (getCompletionStatus(completions, getDateString(today)) === 'completed') {
                 streak = 1;
             }
             checkDate.setDate(checkDate.getDate() - 1);
 
             // Count consecutive completed days going backwards
-            while (completions[getDateString(checkDate)] === 'completed') {
+            while (getCompletionStatus(completions, getDateString(checkDate)) === 'completed') {
                 streak++;
                 checkDate.setDate(checkDate.getDate() - 1);
             }
@@ -735,7 +917,7 @@
         // Calculate past week stats (X / 7)
         function calculateWeeklyStats(completions) {
             const days = getLast7Days();
-            const completed = days.filter(day => completions[day.date] === 'completed').length;
+            const completed = days.filter(day => getCompletionStatus(completions, day.date) === 'completed').length;
             return { completed, total: 7 };
         }
 
@@ -743,15 +925,22 @@
         function calculateAllTimeStats(completions, createdAt) {
             const safeCompletions = completions || {};
 
-            // Determine start date: use createdAt or fallback to first completion date
+            // Get all completion dates
+            const completionDates = Object.keys(safeCompletions).filter(date =>
+                getCompletionStatus(safeCompletions, date) === 'completed'
+            );
+
+            // Determine start date: use earliest of createdAt or first completion (for backdated entries)
             let startDate;
-            if (createdAt) {
+            if (completionDates.length > 0) {
+                completionDates.sort();
+                const earliestCompletion = new Date(completionDates[0]);
+                const created = createdAt ? new Date(createdAt) : earliestCompletion;
+                startDate = earliestCompletion < created ? earliestCompletion : created;
+            } else if (createdAt) {
                 startDate = new Date(createdAt);
             } else {
-                const dates = Object.keys(safeCompletions);
-                if (dates.length === 0) return { completed: 0, total: 0 };
-                dates.sort();
-                startDate = new Date(dates[0]);
+                return { completed: 0, total: 0 };
             }
             startDate.setHours(0, 0, 0, 0);
 
@@ -764,7 +953,7 @@
 
             while (checkDate <= today) {
                 totalDays++;
-                if (safeCompletions[getDateString(checkDate)] === 'completed') {
+                if (getCompletionStatus(safeCompletions, getDateString(checkDate)) === 'completed') {
                     completedDays++;
                 }
                 checkDate.setDate(checkDate.getDate() + 1);
@@ -773,9 +962,33 @@
             return { completed: completedDays, total: totalDays };
         }
 
-        // Get active habits
+        // Threshold for "established" habit (21 days is common habit formation benchmark)
+        const ESTABLISHED_STREAK_THRESHOLD = 21;
+
+        // Check if habit has any completions
+        function hasCompletions(habit) {
+            const completions = habit.completions || {};
+            return Object.keys(completions).some(date => getCompletionStatus(completions, date) === 'completed');
+        }
+
+        // Check if habit is established (21+ day streak)
+        function isEstablished(habit) {
+            return calculateStreak(habit.completions || {}) >= ESTABLISHED_STREAK_THRESHOLD;
+        }
+
+        // Get active habits (started but not yet established)
         function getActiveHabits() {
-            return habitsCache.filter(h => !h.deleted);
+            return habitsCache.filter(h => !h.deleted && hasCompletions(h) && !isEstablished(h));
+        }
+
+        // Get established habits (21+ day streak)
+        function getEstablishedHabits() {
+            return habitsCache.filter(h => !h.deleted && isEstablished(h));
+        }
+
+        // Get not started habits (no completions yet)
+        function getNotStartedHabits() {
+            return habitsCache.filter(h => !h.deleted && !hasCompletions(h));
         }
 
         // Get deleted habits
@@ -795,12 +1008,19 @@
         // Update tab counts
         function updateTabCounts() {
             document.getElementById('activeCount').textContent = getActiveHabits().length;
+            document.getElementById('establishedCount').textContent = getEstablishedHabits().length;
+            document.getElementById('notstartedCount').textContent = getNotStartedHabits().length;
             document.getElementById('deletedCount').textContent = getDeletedHabits().length;
+        }
+
+        // Get all non-deleted habits
+        function getAllActiveHabits() {
+            return habitsCache.filter(h => !h.deleted);
         }
 
         // Calculate and update overall metrics
         function updateOverallMetrics() {
-            const activeHabits = getActiveHabits();
+            const activeHabits = getAllActiveHabits();
 
             let totalWeeklyCompleted = 0;
             let totalWeeklyPossible = 0;
@@ -827,21 +1047,35 @@
         }
 
         // Render empty state for a tab
-        function renderEmptyState(isActiveTab) {
-            if (isActiveTab) {
-                return `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">🌱</div>
-                        <h2>No habits yet</h2>
-                        <p>Add your first habit to start tracking your progress</p>
-                    </div>
-                `;
-            }
+        function renderEmptyState(tab) {
+            const states = {
+                active: {
+                    icon: '🌱',
+                    title: 'No active habits',
+                    description: 'Start a habit to see it here'
+                },
+                established: {
+                    icon: '🏆',
+                    title: 'No established habits yet',
+                    description: `Keep a ${ESTABLISHED_STREAK_THRESHOLD}-day streak to establish a habit`
+                },
+                notstarted: {
+                    icon: '✨',
+                    title: 'All habits started',
+                    description: 'Add new habits to see them here before you begin'
+                },
+                deleted: {
+                    icon: '🗑️',
+                    title: 'No deleted habits',
+                    description: 'Deleted habits will appear here for recovery'
+                }
+            };
+            const state = states[tab] || states.active;
             return `
                 <div class="empty-state">
-                    <div class="empty-state-icon">🗑️</div>
-                    <h2>No deleted habits</h2>
-                    <p>Deleted habits will appear here for recovery</p>
+                    <div class="empty-state-icon">${state.icon}</div>
+                    <h2>${state.title}</h2>
+                    <p>${state.description}</p>
                 </div>
             `;
         }
@@ -849,16 +1083,21 @@
         // Render habits
         function renderHabits() {
             const habitsList = document.getElementById('habitsList');
-            const days = getLast7Days();
+            const days = getLast7Days(weekOffset);
 
             updateTabCounts();
             updateOverallMetrics();
 
-            const isActiveTab = currentTab === 'active';
-            const habits = isActiveTab ? getActiveHabits() : getDeletedHabits();
+            const habitsByTab = {
+                active: getActiveHabits(),
+                established: getEstablishedHabits(),
+                notstarted: getNotStartedHabits(),
+                deleted: getDeletedHabits()
+            };
+            const habits = habitsByTab[currentTab] || [];
 
             if (habits.length === 0) {
-                habitsList.innerHTML = renderEmptyState(isActiveTab);
+                habitsList.innerHTML = renderEmptyState(currentTab);
                 return;
             }
 
@@ -898,7 +1137,8 @@
                         </div>
                         <div class="week-view">
                             ${days.map(day => {
-                                const status = (habit.completions || {})[day.date];
+                                const status = getCompletionStatus(habit.completions, day.date);
+                                const note = getCompletionNote(habit.completions, day.date);
                                 const isDisabled = day.isFuture || isDeleted;
                                 const classes = [
                                     'day-btn',
@@ -918,6 +1158,14 @@
                                             onclick="${isDisabled ? '' : `toggleDay(${originalIndex}, '${day.date}')`}"
                                             ${isDisabled ? 'disabled' : ''}
                                         >${icon}</button>
+                                        <input
+                                            type="text"
+                                            class="day-note"
+                                            placeholder="..."
+                                            value="${escapeHtml(note)}"
+                                            onchange="updateNote(${originalIndex}, '${day.date}', this.value)"
+                                            ${isDisabled ? 'disabled' : ''}
+                                        >
                                     </div>
                                 `;
                             }).join('')}
@@ -990,20 +1238,40 @@
                 habit.completions = {};
             }
 
-            const current = habit.completions[dateStr];
-            if (!current) {
-                habit.completions[dateStr] = 'completed';
-            } else if (current === 'completed') {
-                habit.completions[dateStr] = 'missed';
+            const currentStatus = getCompletionStatus(habit.completions, dateStr);
+            const currentNote = getCompletionNote(habit.completions, dateStr);
+
+            let newStatus;
+            if (!currentStatus) {
+                newStatus = 'completed';
+            } else if (currentStatus === 'completed') {
+                newStatus = 'missed';
             } else {
-                delete habit.completions[dateStr];
+                newStatus = null;
             }
+
+            setCompletion(habit.completions, dateStr, newStatus, currentNote);
 
             // Update UI immediately for responsiveness
             habitsCache = habits;
             renderHabits();
 
             // Save in background
+            await saveHabits(habits);
+        }
+
+        // Update note for a day
+        async function updateNote(habitIndex, dateStr, note) {
+            const habits = [...habitsCache];
+            const habit = habits[habitIndex];
+            if (!habit.completions) {
+                habit.completions = {};
+            }
+
+            const currentStatus = getCompletionStatus(habit.completions, dateStr);
+            setCompletion(habit.completions, dateStr, currentStatus, note.trim());
+
+            habitsCache = habits;
             await saveHabits(habits);
         }
 
@@ -1014,6 +1282,7 @@
 
             // Load and render habits
             await loadHabits();
+            updateWeekNav();
             renderHabits();
 
             // Form submission

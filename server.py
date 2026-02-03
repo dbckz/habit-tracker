@@ -14,7 +14,7 @@ import os
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
-PORT = 8765
+PORT = 8766
 DATA_FILE = Path(__file__).parent / "habits.json"
 
 
