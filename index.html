@@ -304,6 +304,26 @@
             letter-spacing: 0.05em;
         }
 
+        /* Note Totals */
+        .note-totals {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .note-total-item {
+            font-weight: 500;
+        }
+
+        .note-total-divider {
+            color: var(--text-muted);
+        }
+
         /* Week View */
         .week-view {
             display: flex;
@@ -613,6 +633,162 @@
             border-top: 1px solid var(--border);
         }
 
+        /* Section headers for Active tab */
+        .section-header {
+            font-family: 'Fraunces', serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin: 1.5rem 0 0.75rem 0;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-header:first-child {
+            margin-top: 0;
+        }
+
+        .section-header .section-count {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* Analytics Tab */
+        .analytics-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .analytics-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .analytics-card h3 {
+            font-family: 'Fraunces', serif;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .habit-progress-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .progress-label {
+            width: 120px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .progress-bar-container {
+            flex: 1;
+            height: 24px;
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.3s ease;
+        }
+
+        .progress-value {
+            width: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: right;
+        }
+
+        /* Weekly heat map */
+        .weekly-heatmap {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 0.5rem;
+        }
+
+        .heatmap-day {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            color: white;
+            font-weight: 600;
+        }
+
+        .heatmap-day-label {
+            font-size: 0.65rem;
+            opacity: 0.8;
+        }
+
+        /* Trend chart */
+        .trend-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            height: 120px;
+            gap: 0.25rem;
+            padding: 0.5rem 0;
+        }
+
+        .trend-bar {
+            flex: 1;
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+            transition: height 0.3s ease;
+            position: relative;
+        }
+
+        .trend-bar:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text-primary);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            z-index: 10;
+        }
+
+        .trend-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
         /* Responsive */
         @media (max-width: 600px) {
             body {
@@ -695,14 +871,14 @@
         </div>
 
         <div class="tabs" id="tabs">
-            <button class="tab" data-tab="notstarted" onclick="switchTab('notstarted')">
-                Not Started <span class="count" id="notstartedCount">0</span>
+            <button class="tab" data-tab="backlog" onclick="switchTab('backlog')">
+                Backlog <span class="count" id="backlogCount">0</span>
             </button>
             <button class="tab active" data-tab="active" onclick="switchTab('active')">
                 Active <span class="count" id="activeCount">0</span>
             </button>
-            <button class="tab" data-tab="established" onclick="switchTab('established')">
-                Established <span class="count" id="establishedCount">0</span>
+            <button class="tab" data-tab="analytics" onclick="switchTab('analytics')">
+                Analytics
             </button>
             <button class="tab tab-deleted" data-tab="deleted" onclick="switchTab('deleted')">
                 Deleted <span class="count" id="deletedCount">0</span>
@@ -921,6 +1097,47 @@
             return { completed, total: 7 };
         }
 
+        // Calculate sum of numeric notes for the past week
+        function calculateWeeklyNoteTotal(completions) {
+            const days = getLast7Days();
+            let total = 0;
+            days.forEach(day => {
+                const note = getCompletionNote(completions, day.date);
+                const num = parseFloat(note);
+                if (!isNaN(num)) {
+                    total += num;
+                }
+            });
+            return total;
+        }
+
+        // Calculate sum of numeric notes for the current year
+        function calculateYearlyNoteTotal(completions) {
+            const safeCompletions = completions || {};
+            const currentYear = new Date().getFullYear();
+            let total = 0;
+
+            Object.keys(safeCompletions).forEach(date => {
+                if (date.startsWith(currentYear.toString())) {
+                    const note = getCompletionNote(safeCompletions, date);
+                    const num = parseFloat(note);
+                    if (!isNaN(num)) {
+                        total += num;
+                    }
+                }
+            });
+            return total;
+        }
+
+        // Check if habit has any numeric notes
+        function hasNumericNotes(completions) {
+            const safeCompletions = completions || {};
+            return Object.keys(safeCompletions).some(date => {
+                const note = getCompletionNote(safeCompletions, date);
+                return note && !isNaN(parseFloat(note));
+            });
+        }
+
         // Calculate all time stats (X / Y)
         function calculateAllTimeStats(completions, createdAt) {
             const safeCompletions = completions || {};
@@ -962,8 +1179,9 @@
             return { completed: completedDays, total: totalDays };
         }
 
-        // Threshold for "established" habit (21 days is common habit formation benchmark)
-        const ESTABLISHED_STREAK_THRESHOLD = 21;
+        // Thresholds for habit stages
+        const CONSISTENCY_THRESHOLD = 7;  // Days for "consistency built"
+        const ESTABLISHED_THRESHOLD = 21; // Days for "established"
 
         // Check if habit has any completions
         function hasCompletions(habit) {
@@ -973,27 +1191,120 @@
 
         // Check if habit is established (21+ day streak)
         function isEstablished(habit) {
-            return calculateStreak(habit.completions || {}) >= ESTABLISHED_STREAK_THRESHOLD;
+            return calculateStreak(habit.completions || {}) >= ESTABLISHED_THRESHOLD;
         }
 
-        // Get active habits (started but not yet established)
-        function getActiveHabits() {
-            return habitsCache.filter(h => !h.deleted && hasCompletions(h) && !isEstablished(h));
+        // Check if habit has consistency built (7-20 day streak)
+        function hasConsistency(habit) {
+            const streak = calculateStreak(habit.completions || {});
+            return streak >= CONSISTENCY_THRESHOLD && streak < ESTABLISHED_THRESHOLD;
         }
 
-        // Get established habits (21+ day streak)
-        function getEstablishedHabits() {
-            return habitsCache.filter(h => !h.deleted && isEstablished(h));
+        // Check if habit is recently started (< 7 day streak)
+        function isRecentlyStarted(habit) {
+            const streak = calculateStreak(habit.completions || {});
+            return hasCompletions(habit) && streak < CONSISTENCY_THRESHOLD;
         }
 
-        // Get not started habits (no completions yet)
-        function getNotStartedHabits() {
+        // Get all in-progress habits (started, not deleted)
+        function getInProgressHabits() {
+            return habitsCache.filter(h => !h.deleted && hasCompletions(h));
+        }
+
+        // Get active habits grouped by stage
+        function getActiveHabitsGrouped() {
+            const inProgress = getInProgressHabits();
+            return {
+                recentlyStarted: inProgress.filter(h => isRecentlyStarted(h)),
+                consistencyBuilt: inProgress.filter(h => hasConsistency(h)),
+                established: inProgress.filter(h => isEstablished(h))
+            };
+        }
+
+        // Get backlog habits (no completions yet)
+        function getBacklogHabits() {
             return habitsCache.filter(h => !h.deleted && !hasCompletions(h));
         }
 
         // Get deleted habits
         function getDeletedHabits() {
             return habitsCache.filter(h => h.deleted);
+        }
+
+        // Calculate health score (0-1) based on recent completion rate
+        // Only considers in-progress habits
+        function calculateHealthScore(habit) {
+            const completions = habit.completions || {};
+            const days = getLast7Days();
+            let completed = 0;
+            let total = 0;
+
+            days.forEach(day => {
+                if (!day.isFuture) {
+                    total++;
+                    if (getCompletionStatus(completions, day.date) === 'completed') {
+                        completed++;
+                    }
+                }
+            });
+
+            return total > 0 ? completed / total : 0;
+        }
+
+        // Calculate overall health score for all in-progress habits
+        function calculateOverallHealthScore() {
+            const habits = getInProgressHabits();
+            if (habits.length === 0) return 0.5; // Neutral if no habits
+
+            let totalScore = 0;
+            habits.forEach(habit => {
+                totalScore += calculateHealthScore(habit);
+            });
+
+            return totalScore / habits.length;
+        }
+
+        // Convert health score to color (red to green gradient)
+        function healthToColor(score) {
+            // Interpolate between red (0) and green (1)
+            // Red: hsl(0, 70%, 50%)
+            // Yellow: hsl(45, 80%, 50%)
+            // Green: hsl(160, 70%, 40%)
+
+            let hue, saturation, lightness;
+
+            if (score < 0.5) {
+                // Red to yellow (0 to 0.5)
+                const t = score * 2;
+                hue = t * 45;
+                saturation = 70 + t * 10;
+                lightness = 50;
+            } else {
+                // Yellow to green (0.5 to 1)
+                const t = (score - 0.5) * 2;
+                hue = 45 + t * 115;
+                saturation = 80 - t * 10;
+                lightness = 50 - t * 10;
+            }
+
+            return `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        }
+
+        // Get color with opacity for backgrounds
+        function healthToBackgroundColor(score, opacity = 0.08) {
+            const h = score < 0.5 ? score * 90 : 45 + (score - 0.5) * 230;
+            return `hsla(${h}, 70%, 50%, ${opacity})`;
+        }
+
+        // Update page colors based on overall health
+        function updatePageColors() {
+            const score = calculateOverallHealthScore();
+            const bgColor = healthToBackgroundColor(score, 0.04);
+
+            document.body.style.backgroundImage = `
+                radial-gradient(circle at 20% 80%, ${healthToBackgroundColor(score, 0.06)} 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, ${healthToBackgroundColor(score, 0.04)} 0%, transparent 50%)
+            `;
         }
 
         // Switch tabs
@@ -1007,9 +1318,8 @@
 
         // Update tab counts
         function updateTabCounts() {
-            document.getElementById('activeCount').textContent = getActiveHabits().length;
-            document.getElementById('establishedCount').textContent = getEstablishedHabits().length;
-            document.getElementById('notstartedCount').textContent = getNotStartedHabits().length;
+            document.getElementById('activeCount').textContent = getInProgressHabits().length;
+            document.getElementById('backlogCount').textContent = getBacklogHabits().length;
             document.getElementById('deletedCount').textContent = getDeletedHabits().length;
         }
 
@@ -1054,12 +1364,7 @@
                     title: 'No active habits',
                     description: 'Start a habit to see it here'
                 },
-                established: {
-                    icon: '🏆',
-                    title: 'No established habits yet',
-                    description: `Keep a ${ESTABLISHED_STREAK_THRESHOLD}-day streak to establish a habit`
-                },
-                notstarted: {
+                backlog: {
                     icon: '✨',
                     title: 'All habits started',
                     description: 'Add new habits to see them here before you begin'
@@ -1080,6 +1385,225 @@
             `;
         }
 
+        // Render a single habit card
+        function renderHabitCard(habit, days, applyHealthColor = false) {
+            const originalIndex = habitsCache.indexOf(habit);
+            const streak = calculateStreak(habit.completions || {});
+            const weeklyStats = calculateWeeklyStats(habit.completions || {});
+            const allTimeStats = calculateAllTimeStats(habit.completions || {}, habit.createdAt);
+            const allTimePercent = allTimeStats.total > 0
+                ? Math.round((allTimeStats.completed / allTimeStats.total) * 100)
+                : 0;
+            const isDeleted = habit.deleted;
+            const showNoteTotals = hasNumericNotes(habit.completions || {});
+            const weeklyNoteTotal = showNoteTotals ? calculateWeeklyNoteTotal(habit.completions || {}) : 0;
+            const yearlyNoteTotal = showNoteTotals ? calculateYearlyNoteTotal(habit.completions || {}) : 0;
+
+            // Calculate health color for in-progress habits
+            let cardStyle = '';
+            let borderColor = '';
+            if (applyHealthColor && hasCompletions(habit) && !isDeleted) {
+                const healthScore = calculateHealthScore(habit);
+                const color = healthToColor(healthScore);
+                borderColor = `border-left: 4px solid ${color};`;
+            }
+
+            return `
+                <div class="habit-card ${isDeleted ? 'deleted' : ''}" style="${borderColor}">
+                    <div class="habit-header">
+                        <div>
+                            <h2 class="habit-name">${escapeHtml(habit.name)}</h2>
+                            <div class="habit-created">Created ${formatCreatedDate(habit.createdAt)}</div>
+                        </div>
+                        ${!isDeleted ? `<button class="habit-delete" onclick="deleteHabit(${originalIndex})" title="Delete habit">×</button>` : ''}
+                    </div>
+                    <div class="habit-stats">
+                        <div class="stat">
+                            <span class="stat-value success">${streak}</span>
+                            <span class="stat-label">Current Streak</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${weeklyStats.completed} / 7</span>
+                            <span class="stat-label">Past Week</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-value">${allTimeStats.completed} / ${allTimeStats.total}</span>
+                            <div class="stat-percent">${allTimePercent}%</div>
+                            <span class="stat-label">All Time</span>
+                        </div>
+                    </div>
+                    ${showNoteTotals ? `
+                    <div class="note-totals">
+                        <span class="note-total-item">${weeklyNoteTotal.toLocaleString()} ${escapeHtml(habit.name).toLowerCase()} this week</span>
+                        <span class="note-total-divider">•</span>
+                        <span class="note-total-item">${yearlyNoteTotal.toLocaleString()} this year</span>
+                    </div>
+                    ` : ''}
+                    <div class="week-view">
+                        ${days.map(day => {
+                            const status = getCompletionStatus(habit.completions, day.date);
+                            const note = getCompletionNote(habit.completions, day.date);
+                            const isDisabled = day.isFuture || isDeleted;
+                            const classes = [
+                                'day-btn',
+                                day.isToday && 'today',
+                                isDisabled && 'future',
+                                status === 'completed' && 'completed',
+                                status === 'missed' && 'missed'
+                            ].filter(Boolean).join(' ');
+                            const icon = status === 'completed' ? '✓' : status === 'missed' ? '✗' : '';
+
+                            return `
+                                <div class="day">
+                                    <span class="day-label">${day.dayName}</span>
+                                    <span class="day-date">${day.dayNumber}</span>
+                                    <button
+                                        class="${classes}"
+                                        onclick="${isDisabled ? '' : `toggleDay(${originalIndex}, '${day.date}')`}"
+                                        ${isDisabled ? 'disabled' : ''}
+                                    >${icon}</button>
+                                    <input
+                                        type="text"
+                                        class="day-note"
+                                        placeholder="..."
+                                        value="${escapeHtml(note)}"
+                                        onchange="updateNote(${originalIndex}, '${day.date}', this.value)"
+                                        ${isDisabled ? 'disabled' : ''}
+                                    >
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    ${isDeleted ? `
+                        <div class="deleted-actions">
+                            <button class="restore-btn" onclick="restoreHabit(${originalIndex})">Restore Habit</button>
+                            <button class="delete-permanent-btn" onclick="permanentDeleteHabit(${originalIndex})">Delete Permanently</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        // Render analytics tab
+        function renderAnalytics() {
+            const inProgress = getInProgressHabits();
+            const days = getLast7Days();
+
+            if (inProgress.length === 0) {
+                return `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <h2>No data yet</h2>
+                        <p>Start tracking habits to see your analytics</p>
+                    </div>
+                `;
+            }
+
+            // Calculate daily completion rates for the past 4 weeks
+            const weeklyData = [];
+            for (let w = -3; w <= 0; w++) {
+                const weekDays = getLast7Days(w);
+                let completed = 0;
+                let total = 0;
+                weekDays.forEach(day => {
+                    if (!day.isFuture) {
+                        inProgress.forEach(habit => {
+                            total++;
+                            if (getCompletionStatus(habit.completions, day.date) === 'completed') {
+                                completed++;
+                            }
+                        });
+                    }
+                });
+                weeklyData.push({
+                    label: w === 0 ? 'This week' : w === -1 ? 'Last week' : `${Math.abs(w) + 1} weeks ago`,
+                    rate: total > 0 ? completed / total : 0,
+                    completed,
+                    total
+                });
+            }
+
+            // Per-habit progress bars
+            const habitBars = inProgress.map(habit => {
+                const score = calculateHealthScore(habit);
+                const color = healthToColor(score);
+                const weeklyStats = calculateWeeklyStats(habit.completions || {});
+                return `
+                    <div class="progress-item">
+                        <span class="progress-label" title="${escapeHtml(habit.name)}">${escapeHtml(habit.name)}</span>
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" style="width: ${score * 100}%; background: ${color};"></div>
+                        </div>
+                        <span class="progress-value" style="color: ${color}">${weeklyStats.completed}/7</span>
+                    </div>
+                `;
+            }).join('');
+
+            // Weekly heatmap
+            const heatmapDays = days.map(day => {
+                let completed = 0;
+                let total = 0;
+                if (!day.isFuture) {
+                    inProgress.forEach(habit => {
+                        total++;
+                        if (getCompletionStatus(habit.completions, day.date) === 'completed') {
+                            completed++;
+                        }
+                    });
+                }
+                const rate = total > 0 ? completed / total : 0;
+                const color = day.isFuture ? 'var(--bg-secondary)' : healthToColor(rate);
+                const textColor = day.isFuture ? 'var(--text-muted)' : 'white';
+                return `
+                    <div class="heatmap-day" style="background: ${color}; color: ${textColor};">
+                        <span class="heatmap-day-label">${day.dayName}</span>
+                        <span>${day.isFuture ? '-' : Math.round(rate * 100) + '%'}</span>
+                    </div>
+                `;
+            }).join('');
+
+            // Trend chart (4 weeks)
+            const trendBars = weeklyData.map(week => {
+                const color = healthToColor(week.rate);
+                const height = Math.max(week.rate * 100, 5);
+                return `
+                    <div class="trend-bar"
+                         style="height: ${height}%; background: ${color};"
+                         data-tooltip="${week.label}: ${Math.round(week.rate * 100)}%">
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="analytics-container">
+                    <div class="analytics-card">
+                        <h3>This Week by Day</h3>
+                        <div class="weekly-heatmap">
+                            ${heatmapDays}
+                        </div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <h3>Habit Performance (Last 7 Days)</h3>
+                        <div class="habit-progress-bar">
+                            ${habitBars}
+                        </div>
+                    </div>
+
+                    <div class="analytics-card">
+                        <h3>4-Week Trend</h3>
+                        <div class="trend-chart">
+                            ${trendBars}
+                        </div>
+                        <div class="trend-labels">
+                            <span>4 weeks ago</span>
+                            <span>This week</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
         // Render habits
         function renderHabits() {
             const habitsList = document.getElementById('habitsList');
@@ -1087,98 +1611,60 @@
 
             updateTabCounts();
             updateOverallMetrics();
+            updatePageColors();
 
-            const habitsByTab = {
-                active: getActiveHabits(),
-                established: getEstablishedHabits(),
-                notstarted: getNotStartedHabits(),
-                deleted: getDeletedHabits()
-            };
-            const habits = habitsByTab[currentTab] || [];
-
-            if (habits.length === 0) {
-                habitsList.innerHTML = renderEmptyState(currentTab);
+            // Handle analytics tab separately
+            if (currentTab === 'analytics') {
+                habitsList.innerHTML = renderAnalytics();
                 return;
             }
 
-            habitsList.innerHTML = habits.map((habit) => {
-                const originalIndex = habitsCache.indexOf(habit);
-                const streak = calculateStreak(habit.completions || {});
-                const weeklyStats = calculateWeeklyStats(habit.completions || {});
-                const allTimeStats = calculateAllTimeStats(habit.completions || {}, habit.createdAt);
-                const allTimePercent = allTimeStats.total > 0
-                    ? Math.round((allTimeStats.completed / allTimeStats.total) * 100)
-                    : 0;
-                const isDeleted = habit.deleted;
+            // Get habits for current tab
+            let html = '';
 
-                return `
-                    <div class="habit-card ${isDeleted ? 'deleted' : ''}">
-                        <div class="habit-header">
-                            <div>
-                                <h2 class="habit-name">${escapeHtml(habit.name)}</h2>
-                                <div class="habit-created">Created ${formatCreatedDate(habit.createdAt)}</div>
-                            </div>
-                            ${!isDeleted ? `<button class="habit-delete" onclick="deleteHabit(${originalIndex})" title="Delete habit">×</button>` : ''}
-                        </div>
-                        <div class="habit-stats">
-                            <div class="stat">
-                                <span class="stat-value success">${streak}</span>
-                                <span class="stat-label">Current Streak</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value">${weeklyStats.completed} / 7</span>
-                                <span class="stat-label">Past Week</span>
-                            </div>
-                            <div class="stat">
-                                <span class="stat-value">${allTimeStats.completed} / ${allTimeStats.total}</span>
-                                <div class="stat-percent">${allTimePercent}%</div>
-                                <span class="stat-label">All Time</span>
-                            </div>
-                        </div>
-                        <div class="week-view">
-                            ${days.map(day => {
-                                const status = getCompletionStatus(habit.completions, day.date);
-                                const note = getCompletionNote(habit.completions, day.date);
-                                const isDisabled = day.isFuture || isDeleted;
-                                const classes = [
-                                    'day-btn',
-                                    day.isToday && 'today',
-                                    isDisabled && 'future',
-                                    status === 'completed' && 'completed',
-                                    status === 'missed' && 'missed'
-                                ].filter(Boolean).join(' ');
-                                const icon = status === 'completed' ? '✓' : status === 'missed' ? '✗' : '';
+            if (currentTab === 'active') {
+                const grouped = getActiveHabitsGrouped();
+                const totalHabits = grouped.recentlyStarted.length + grouped.consistencyBuilt.length + grouped.established.length;
 
-                                return `
-                                    <div class="day">
-                                        <span class="day-label">${day.dayName}</span>
-                                        <span class="day-date">${day.dayNumber}</span>
-                                        <button
-                                            class="${classes}"
-                                            onclick="${isDisabled ? '' : `toggleDay(${originalIndex}, '${day.date}')`}"
-                                            ${isDisabled ? 'disabled' : ''}
-                                        >${icon}</button>
-                                        <input
-                                            type="text"
-                                            class="day-note"
-                                            placeholder="..."
-                                            value="${escapeHtml(note)}"
-                                            onchange="updateNote(${originalIndex}, '${day.date}', this.value)"
-                                            ${isDisabled ? 'disabled' : ''}
-                                        >
-                                    </div>
-                                `;
-                            }).join('')}
-                        </div>
-                        ${isDeleted ? `
-                            <div class="deleted-actions">
-                                <button class="restore-btn" onclick="restoreHabit(${originalIndex})">Restore Habit</button>
-                                <button class="delete-permanent-btn" onclick="permanentDeleteHabit(${originalIndex})">Delete Permanently</button>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            }).join('');
+                if (totalHabits === 0) {
+                    habitsList.innerHTML = renderEmptyState('active');
+                    return;
+                }
+
+                // Render sections (top to bottom: Recently Started → Consistency Built → Established)
+                if (grouped.recentlyStarted.length > 0) {
+                    html += `<div class="section-header">Recently Started <span class="section-count">(${grouped.recentlyStarted.length})</span></div>`;
+                    html += grouped.recentlyStarted.map(h => renderHabitCard(h, days, true)).join('');
+                }
+
+                if (grouped.consistencyBuilt.length > 0) {
+                    html += `<div class="section-header">Consistency Built <span class="section-count">(${grouped.consistencyBuilt.length})</span></div>`;
+                    html += grouped.consistencyBuilt.map(h => renderHabitCard(h, days, true)).join('');
+                }
+
+                if (grouped.established.length > 0) {
+                    html += `<div class="section-header">Established <span class="section-count">(${grouped.established.length})</span></div>`;
+                    html += grouped.established.map(h => renderHabitCard(h, days, true)).join('');
+                }
+
+            } else if (currentTab === 'backlog') {
+                const habits = getBacklogHabits();
+                if (habits.length === 0) {
+                    habitsList.innerHTML = renderEmptyState('backlog');
+                    return;
+                }
+                html = habits.map(h => renderHabitCard(h, days, false)).join('');
+
+            } else if (currentTab === 'deleted') {
+                const habits = getDeletedHabits();
+                if (habits.length === 0) {
+                    habitsList.innerHTML = renderEmptyState('deleted');
+                    return;
+                }
+                html = habits.map(h => renderHabitCard(h, days, false)).join('');
+            }
+
+            habitsList.innerHTML = html;
         }
 
         // Escape HTML to prevent XSS
